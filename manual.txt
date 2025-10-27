@@ -1,0 +1,129 @@
+# PostgreSQL（Docker）構築・CSV取込・SQL実行 手順書
+作成日: 2025年10月15日
+環境: Windows 10 / Docker Desktop 使用
+
+----------------------------------------
+1. 作業ディレクトリの作成
+----------------------------------------
+cd C:\Users\fumic\Documents
+mkdir pg-docker
+cd pg-docker
+
+----------------------------------------
+2. 必要ファイルの配置
+----------------------------------------
+作成した pg-docker フォルダに以下の3ファイルを用意する。
+
+docker-compose.yml  : PostgreSQL コンテナ設定ファイル
+transactions.csv     : 取引データ
+users.csv            : ユーザーデータ
+
+----------------------------------------
+3. docker-compose.yml の内容
+----------------------------------------
+services:
+  db:
+    image: postgres:15
+    container_name: pg-docker
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpass
+      POSTGRES_DB: pgdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+
+----------------------------------------
+4. Docker コンテナ起動
+----------------------------------------
+docker compose up -d
+
+----------------------------------------
+5. コンテナの状態確認
+----------------------------------------
+docker ps
+
+----------------------------------------
+6. PostgreSQL へ接続
+----------------------------------------
+docker exec -it pg-docker psql -U pguser -d pgdb
+
+----------------------------------------
+7. テーブル作成
+----------------------------------------
+CREATE TABLE transactions (
+    transaction_id INTEGER PRIMARY KEY,
+    date DATE,
+    store_name TEXT,
+    product_code TEXT,
+    product_name TEXT,
+    quantity INTEGER,
+    unit_price INTEGER,
+    amount INTEGER,
+    payment_method TEXT
+);
+
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY,
+    date DATE,
+    total_amount INTEGER,
+    gender TEXT,
+    occupation TEXT,
+    region TEXT
+);
+
+\dt
+
+----------------------------------------
+8. CSV ファイルをコンテナにコピー
+----------------------------------------
+docker cp transactions.csv pg-docker:/transactions.csv
+docker cp users.csv pg-docker:/users.csv
+
+----------------------------------------
+9. CSV データを取り込み
+----------------------------------------
+\copy transactions FROM '/transactions.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8');
+\copy users        FROM '/users.csv'        WITH (FORMAT csv, HEADER true, ENCODING 'UTF8');
+
+----------------------------------------
+10. データ確認（結合クエリ例）
+----------------------------------------
+SELECT
+  t.transaction_id AS "取引ID",
+  t.date AS "取引日",
+  t.store_name AS "店舗",
+  t.product_name AS "商品名",
+  t.quantity AS "数量",
+  t.amount AS "金額",
+  t.payment_method AS "支払方法",
+  u.gender AS "性別",
+  u.occupation AS "職業",
+  u.region AS "地域"
+FROM
+  transactions t
+JOIN
+  users u ON t.transaction_id = u.user_id;
+
+----------------------------------------
+11. 終了
+----------------------------------------
+\q
+
+Docker コンテナを停止:
+docker compose down
+
+データも削除する場合:
+docker compose down -v
+
+----------------------------------------
+補足: 接続情報まとめ
+----------------------------------------
+ホスト        : localhost
+ポート        : 5432
+データベース  : pgdb
+ユーザー名    : pguser
+パスワード    : pgpass
