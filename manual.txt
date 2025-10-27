@@ -5,7 +5,7 @@
 ----------------------------------------
 1. 作業ディレクトリの作成
 ----------------------------------------
-cd C:\Users\fumic\Documents
+cd C:\Users\xxxx\Documents
 mkdir pg-docker
 cd pg-docker
 
